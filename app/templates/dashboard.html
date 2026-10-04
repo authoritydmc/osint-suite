@@ -45,7 +45,7 @@
             <div class="flex items-center space-x-3">
                 <!-- Client Geo Detection Badge -->
                 <div v-if="clientCountry" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 flex items-center gap-1.5">
-                    <i class="fa-solid fa-location-dot text-indigo-400"></i> Auto-Detected: <span class="font-bold text-white">{{ clientCountryName }} ({{ clientCountry }})</span>
+                    <i class="fa-solid fa-location-dot text-indigo-400"></i> Auto-Detected: <span class="font-bold text-white">${ clientCountryName } (${ clientCountry })</span>
                 </div>
                 <a href="https://auth.rajlabs.in" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition flex items-center gap-1.5 border border-slate-700">
                     <i class="fa-solid fa-shield-halved text-indigo-400"></i> Authentik SSO
@@ -104,14 +104,14 @@
                 <div class="glass p-6 rounded-2xl space-y-4">
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Number Formatting</h3>
                     <div class="space-y-2">
-                        <div class="text-2xl font-bold text-indigo-400 font-mono">{{ phoneResult.number_details?.international }}</div>
-                        <div class="text-xs text-slate-400 font-mono">E.164: {{ phoneResult.number_details?.e164 }}</div>
-                        <div class="text-xs text-slate-400 font-mono">National: {{ phoneResult.number_details?.national }}</div>
+                        <div class="text-2xl font-bold text-indigo-400 font-mono">${ phoneResult.number_details ? phoneResult.number_details.international : '' }</div>
+                        <div class="text-xs text-slate-400 font-mono">E.164: ${ phoneResult.number_details ? phoneResult.number_details.e164 : '' }</div>
+                        <div class="text-xs text-slate-400 font-mono">National: ${ phoneResult.number_details ? phoneResult.number_details.national : '' }</div>
                     </div>
                     <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
                         <span class="text-xs text-slate-400">Validity:</span>
                         <span :class="phoneResult.valid ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'" class="text-xs px-2.5 py-1 rounded-full border">
-                            {{ phoneResult.valid ? 'Valid Number' : 'Invalid Number' }}
+                            ${ phoneResult.valid ? 'Valid Number' : 'Invalid Number' }
                         </span>
                     </div>
                 </div>
@@ -120,10 +120,10 @@
                 <div class="glass p-6 rounded-2xl space-y-4">
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Telecom & Geo Intelligence</h3>
                     <div class="space-y-3 text-sm">
-                        <div class="flex justify-between"><span class="text-slate-400">Original Carrier:</span> <span class="font-medium text-white">{{ phoneResult.telecom_intel?.carrier }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-400">Line Type:</span> <span class="font-medium text-white">{{ phoneResult.telecom_intel?.line_type }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-400">Telecom Circle:</span> <span class="font-medium text-indigo-300">{{ phoneResult.telecom_intel?.telecom_circle }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-400">Timezones:</span> <span class="font-mono text-xs text-slate-300">{{ phoneResult.telecom_intel?.timezones?.join(', ') }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Original Carrier:</span> <span class="font-medium text-white">${ phoneResult.telecom_intel ? phoneResult.telecom_intel.carrier : '' }</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Line Type:</span> <span class="font-medium text-white">${ phoneResult.telecom_intel ? phoneResult.telecom_intel.line_type : '' }</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Telecom Circle:</span> <span class="font-medium text-indigo-300">${ phoneResult.telecom_intel ? phoneResult.telecom_intel.telecom_circle : '' }</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Timezones:</span> <span class="font-mono text-xs text-slate-300">${ phoneResult.telecom_intel && phoneResult.telecom_intel.timezones ? phoneResult.telecom_intel.timezones.join(', ') : '' }</span></div>
                     </div>
                 </div>
 
@@ -132,13 +132,13 @@
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Risk Profile & Dorks</h3>
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-slate-400">Fraud Risk Rating:</span>
-                        <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">{{ phoneResult.reputation_risk?.risk_level }}</span>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">${ phoneResult.reputation_risk ? phoneResult.reputation_risk.risk_level : 'Low' }</span>
                     </div>
                     <div class="space-y-2 pt-2">
                         <div class="text-xs text-slate-400 mb-1">Direct External Recon:</div>
                         <div class="flex flex-wrap gap-2">
                             <a v-for="ext in phoneResult.external_lookups" :key="ext.name" :href="ext.url" target="_blank" class="px-2.5 py-1 rounded-lg bg-dark-800 hover:bg-slate-700 text-xs text-indigo-400 border border-slate-700 transition flex items-center gap-1">
-                                {{ ext.name }} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                ${ ext.name } <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                             </a>
                         </div>
                     </div>
@@ -166,15 +166,15 @@
             <div v-if="sherlockResult" class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-300">
-                        Found <span class="text-emerald-400 font-bold">{{ sherlockResult.total_found }}</span> active profiles across {{ sherlockResult.total_scanned }} platforms for <span class="text-indigo-400 font-mono">@{{ sherlockResult.username }}</span>
+                        Found <span class="text-emerald-400 font-bold">${ sherlockResult.total_found }</span> active profiles across ${ sherlockResult.total_scanned } platforms for <span class="text-indigo-400 font-mono">@${ sherlockResult.username }</span>
                     </h3>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <div v-for="prof in sherlockResult.profiles" :key="prof.platform" :class="prof.exists ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-dark-800/40 opacity-40'" class="glass p-4 rounded-xl border transition flex items-center justify-between">
                         <div>
-                            <div class="text-sm font-semibold text-white">{{ prof.platform }}</div>
-                            <div class="text-xs text-slate-400 truncate max-w-[180px]">{{ prof.url }}</div>
+                            <div class="text-sm font-semibold text-white">${ prof.platform }</div>
+                            <div class="text-xs text-slate-400 truncate max-w-[180px]">${ prof.url }</div>
                         </div>
                         <a v-if="prof.exists" :href="prof.url" target="_blank" class="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition">
                             <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
@@ -207,9 +207,9 @@
                         <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">DNS Records (A, MX, TXT, NS)</h3>
                         <div class="space-y-3 font-mono text-xs">
                             <div v-for="(vals, rtype) in domainResult.dns_records" :key="rtype" class="space-y-1">
-                                <span class="font-bold text-indigo-400">{{ rtype }} Records:</span>
+                                <span class="font-bold text-indigo-400">${ rtype } Records:</span>
                                 <div v-if="vals.length" class="pl-3 text-slate-300 space-y-0.5">
-                                    <div v-for="v in vals" :key="v" class="truncate">{{ v }}</div>
+                                    <div v-for="v in vals" :key="v" class="truncate">${ v }</div>
                                 </div>
                                 <div v-else class="pl-3 text-slate-600 italic">None found</div>
                             </div>
@@ -220,10 +220,10 @@
                         <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Discovered Live Subdomains</h3>
                         <div class="space-y-2">
                             <div v-for="sub in domainResult.discovered_subdomains" :key="sub.subdomain" class="p-2.5 rounded-lg bg-dark-800 border border-slate-800 flex justify-between items-center text-xs">
-                                <span class="font-mono text-indigo-300 font-semibold">{{ sub.subdomain }}</span>
-                                <span class="font-mono text-slate-400">{{ sub.ips.join(', ') }}</span>
+                                <span class="font-mono text-indigo-300 font-semibold">${ sub.subdomain }</span>
+                                <span class="font-mono text-slate-400">${ sub.ips.join(', ') }</span>
                             </div>
-                            <div v-if="!domainResult.discovered_subdomains?.length" class="text-xs text-slate-500 italic">No standard top-level subdomains discovered via instant bruteforce.</div>
+                            <div v-if="!domainResult.discovered_subdomains || !domainResult.discovered_subdomains.length" class="text-xs text-slate-500 italic">No standard top-level subdomains discovered via instant bruteforce.</div>
                         </div>
                     </div>
                 </div>
@@ -249,11 +249,11 @@
             <div v-if="ipResult" class="glass p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Autonomous System & Geolocation</h3>
                 <div class="space-y-3 text-sm">
-                    <div class="flex justify-between"><span class="text-slate-400">Target IP:</span> <span class="font-mono text-indigo-400 font-bold">{{ ipResult.ip }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Country:</span> <span class="font-medium text-white">{{ ipResult.country }} ({{ ipResult.country_code }})</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">City / Region:</span> <span class="font-medium text-white">{{ ipResult.city }}, {{ ipResult.region }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">ASN & Org:</span> <span class="font-medium text-indigo-300">{{ ipResult.asn }} - {{ ipResult.org }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Timezone:</span> <span class="font-mono text-slate-400">{{ ipResult.timezone }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Target IP:</span> <span class="font-mono text-indigo-400 font-bold">${ ipResult.ip }</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Country:</span> <span class="font-medium text-white">${ ipResult.country } (${ ipResult.country_code })</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">City / Region:</span> <span class="font-medium text-white">${ ipResult.city }, ${ ipResult.region }</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">ASN & Org:</span> <span class="font-medium text-indigo-300">${ ipResult.asn } - ${ ipResult.org }</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Timezone:</span> <span class="font-mono text-slate-400">${ ipResult.timezone }</span></div>
                 </div>
             </div>
         </div>
@@ -263,6 +263,7 @@
     <script>
         const { createApp } = Vue;
         createApp({
+            delimiters: ['${', '}'],
             data() {
                 return {
                     activeTab: 'phone',

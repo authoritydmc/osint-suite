@@ -1,10 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import os
-import httpx
 
 from app.core.phone_recon import analyze_phone_number
 from app.core.sherlock_recon import search_username
@@ -33,7 +31,7 @@ class IPRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="dashboard.html")
 
 @app.get("/health")
 async def health():
@@ -41,7 +39,6 @@ async def health():
 
 @app.get("/api/client-geo")
 async def get_client_geo(request: Request):
-    # Detect IP from Cloudflare, Traefik, or direct client headers
     cf_country = request.headers.get("CF-IPCountry")
     client_ip = (
         request.headers.get("CF-Connecting-IP")
@@ -58,7 +55,6 @@ async def get_client_geo(request: Request):
             "source": "cloudflare-header"
         }
     
-    # Fallback to ipapi lookup
     intel = await ip_intel(client_ip)
     cc = intel.get("country_code", "IN")
     cname = intel.get("country", "India")
