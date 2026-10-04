@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import os
+import httpx
 
 from app.core.phone_recon import analyze_phone_number
 from app.core.sherlock_recon import search_username
@@ -37,6 +38,36 @@ async def serve_dashboard(request: Request):
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": "osint-suite", "version": "1.0.0"}
+
+@app.get("/api/client-geo")
+async def get_client_geo(request: Request):
+    # Detect IP from Cloudflare, Traefik, or direct client headers
+    cf_country = request.headers.get("CF-IPCountry")
+    client_ip = (
+        request.headers.get("CF-Connecting-IP")
+        or request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or request.headers.get("X-Real-IP")
+        or request.client.host
+    )
+    
+    if cf_country and len(cf_country) == 2:
+        return {
+            "client_ip": client_ip,
+            "country_code": cf_country.upper(),
+            "country": cf_country.upper(),
+            "source": "cloudflare-header"
+        }
+    
+    # Fallback to ipapi lookup
+    intel = await ip_intel(client_ip)
+    cc = intel.get("country_code", "IN")
+    cname = intel.get("country", "India")
+    return {
+        "client_ip": client_ip,
+        "country_code": cc if cc else "IN",
+        "country": cname if cname else "India",
+        "source": "ip-intel"
+    }
 
 @app.post("/api/recon/phone")
 async def api_phone(req: PhoneRequest):
