@@ -1,8 +1,16 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 import os
+
+# When "1" (default), every request except /health and /docs must carry
+# Authentik ForwardAuth identity headers (X-authentik-username/email).
+# Traefik enforces login at the edge; this is defense-in-depth so direct
+# container access (bypassing the proxy) cannot be abused.
+REQUIRE_SSO = os.getenv("REQUIRE_AUTHENTIK_SSO", "1") == "1"
+PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
 
 from app.core.phone_recon import analyze_phone_number
 from app.core.sherlock_recon import search_username
@@ -15,6 +23,23 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory="app/templates")
+
+def get_sso_user(request: Request) -> str | None:
+    """Return Authentik SSO identity from trusted ForwardAuth headers."""
+    return request.headers.get("X-authentik-username") or request.headers.get("X-authentik-email")
+
+class AuthentikSSOMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if REQUIRE_SSO and request.url.path not in PUBLIC_PATHS:
+            if not get_sso_user(request):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Unauthorized. Authentik SSO login required."},
+                )
+        request.state.sso_user = get_sso_user(request)
+        return await call_next(request)
+
+app.add_middleware(AuthentikSSOMiddleware)
 
 class PhoneRequest(BaseModel):
     phone: str
