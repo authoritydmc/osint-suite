@@ -70,6 +70,12 @@
             <button @click="activeTab = 'ip'" :class="{'tab-active font-semibold': activeTab === 'ip'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
                 <i class="fa-solid fa-network-wired text-xs"></i> IP & ASN Geolocation
             </button>
+            <button @click="activeTab = 'email'; loadSettings()" :class="{'tab-active font-semibold': activeTab === 'email'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-envelope text-xs"></i> Email Intel
+            </button>
+            <button @click="activeTab = 'settings'; loadSettings()" :class="{'tab-active font-semibold': activeTab === 'settings'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-key text-xs"></i> API Keys
+            </button>
         </div>
 
         <!-- 1. PHONE NUMINT MODULE -->
@@ -134,6 +140,16 @@
                         <span class="text-xs text-slate-400">Fraud Risk Rating:</span>
                         <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">${ phoneResult.reputation_risk ? phoneResult.reputation_risk.risk_level : 'Low' }</span>
                     </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Exposure Score:</span>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">${ phoneResult.exposure_score }/100</span>
+                    </div>
+                    <div v-if="phoneResult.telegram && phoneResult.telegram.registered" class="pt-2 border-t border-slate-800 text-xs space-y-1">
+                        <div class="text-slate-400 uppercase tracking-wider">Live Telegram Identity</div>
+                        <div class="text-white font-medium">${ phoneResult.telegram.first_name } ${ phoneResult.telegram.last_name || '' }</div>
+                        <div class="text-slate-400">@${ phoneResult.telegram.username || 'no username' } · photo: ${ phoneResult.telegram.has_photo ? 'yes' : 'no' }</div>
+                    </div>
+                    <div v-else-if="phoneResult.telegram && phoneResult.telegram.configured" class="pt-2 border-t border-slate-800 text-xs text-slate-500">Telegram: number not registered.</div>
                     <div class="space-y-2 pt-2">
                         <div class="text-xs text-slate-400 mb-1">Direct External Recon:</div>
                         <div class="flex flex-wrap gap-2">
@@ -258,6 +274,61 @@
             </div>
         </div>
 
+        <!-- 5. EMAIL INTEL MODULE -->
+        <div v-if="activeTab === 'email'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl">
+                <form @submit.prevent="searchEmail" class="flex gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-envelope absolute left-4 top-3.5 text-slate-500"></i>
+                        <input v-model="emailInput" type="email" placeholder="Enter email address" class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    </div>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <i v-else class="fa-solid fa-magnifying-glass"></i>
+                        <span>Hunt Email</span>
+                    </button>
+                </form>
+                <p class="text-xs text-slate-500 mt-3">Runs live Holehe scan (120+ sites, ~10s) + Gravatar + GitHub commit attribution + breach check.</p>
+            </div>
+
+            <div v-if="emailResult" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-2xl space-y-3 text-sm">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Holehe — Registered Accounts (${ emailResult.holehe ? emailResult.holehe.registered_count : 0 }/${ emailResult.holehe ? emailResult.holehe.sites_checked : 0 })</h3>
+                    <div v-if="emailResult.holehe && emailResult.holehe.registered_on" class="flex flex-wrap gap-2">
+                        <span v-for="s in emailResult.holehe.registered_on" class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${ s }</span>
+                    </div>
+                    <div v-else class="text-slate-500 text-xs">No registrations found or scan unavailable.</div>
+                    <div class="pt-2 text-xs text-slate-400">Gravatar: <span class="text-white">${ emailResult.gravatar && emailResult.gravatar.exists ? 'exists' : 'none' }</span> · GitHub commits: <span class="text-white">${ emailResult.github_commits ? emailResult.github_commits.total : 0 }</span></div>
+                </div>
+                <div class="glass p-6 rounded-2xl space-y-3 text-sm">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Deep Links</h3>
+                    <div v-for="l in (emailResult.lookups || [])" :key="l.url">
+                        <a :href="l.url" target="_blank" class="text-indigo-400 hover:text-indigo-300 text-xs"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>${ l.name }</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. API KEYS / SETTINGS MODULE -->
+        <div v-if="activeTab === 'settings'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl space-y-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">API Keys & Integrations</h3>
+                <p class="text-xs text-slate-500">Keys unlock live lookups (Numverify, AbuseIPDB, Shodan, HIBP, Telegram…). Values are stored server-side only and never displayed back. They can also be set via container env / Coolify (see README).</p>
+                <div v-if="settings" class="space-y-3">
+                    <div v-for="k in settings.keys" :key="k.key" class="flex flex-col md:flex-row md:items-center gap-2 text-sm">
+                        <div class="md:w-64">
+                            <div class="text-white font-medium text-xs">${ k.label }</div>
+                            <div class="text-slate-500 text-xs">${ k.get }</div>
+                        </div>
+                        <span v-if="k.set" class="text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">configured</span>
+                        <input v-else v-model="keyInputs[k.key]" type="password" :placeholder="'paste ' + k.key" class="flex-1 bg-dark-800 border border-slate-700 rounded-xl px-4 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                </div>
+                <button @click="saveSettings" :disabled="loading" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition disabled:opacity-50">Save Keys</button>
+                <div v-if="settings && settings.telegram" class="text-xs text-slate-400 pt-2">Telegram live lookup: <span class="text-white">${ settings.telegram.configured ? 'ready — phone scans show name/username/photo' : 'not configured' }</span></div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -279,6 +350,10 @@
                     domainResult: null,
                     ipInput: '80.225.195.202',
                     ipResult: null,
+                    emailInput: '',
+                    emailResult: null,
+                    settings: null,
+                    keyInputs: {},
                 }
             },
             mounted() {
@@ -349,6 +424,45 @@
                             body: JSON.stringify({ ip: this.ipInput })
                         });
                         this.ipResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async searchEmail() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: this.emailInput })
+                        });
+                        this.emailResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async loadSettings() {
+                    try {
+                        const r = await fetch('/api/settings');
+                        this.settings = await r.json();
+                    } catch (e) {
+                        console.log('settings unavailable');
+                    }
+                },
+                async saveSettings() {
+                    this.loading = true;
+                    try {
+                        const keys = {};
+                        for (const [k, v] of Object.entries(this.keyInputs)) {
+                            if (v) keys[k] = v;
+                        }
+                        const r = await fetch('/api/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ keys })
+                        });
+                        this.settings = await r.json();
+                        this.keyInputs = {};
                     } finally {
                         this.loading = false;
                     }

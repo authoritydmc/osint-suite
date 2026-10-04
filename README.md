@@ -21,3 +21,33 @@ docker run -d -p 8000:8000 --name osint-suite rajlabs/osint-suite:latest
 ```
 
 Navigate to `http://localhost:8000` or `https://osint.rajlabs.in`.
+
+## 🔑 API keys (all optional)
+
+Every lookup works keyless; keys unlock live validation (Numverify, Abstract,
+Veriphone, IPQualityScore, AbuseIPDB, Shodan, HIBP, GitHub token) and real
+Telegram name/photo lookup. Set via container env (see `server-setups/.env.example`
+`OSINT Suite` section) or paste in-app under the **API Keys** tab (persisted
+to `/app/data/keys.json`, values never shown back).
+
+### Telegram live lookup (free, 5 min)
+
+Phone scans then show the same name/username/photo Telegram apps show.
+
+```bash
+# 1. Get API_ID + API_HASH at https://my.telegram.org (your own account)
+# 2. Generate a session string once:
+pip install telethon
+python -c "
+import asyncio
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+async def main():
+    async with TelegramClient(StringSession(), int(input('API_ID: ')), input('API_HASH: ')) as c:
+        await c.start(phone=input('PHONE (+E164): '))
+        print(await c.session.save())
+asyncio.run(main())
+"
+# 3. Set TELEGRAM_API_ID / TELEGRAM_API_HASH / TELEGRAM_SESSION on the container.
+# The app imports the number as a contact, reads name/photo, then deletes it.
+```

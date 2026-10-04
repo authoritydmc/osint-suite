@@ -7,3 +7,5 @@ dnspython>=2.6.1
 beautifulsoup4>=4.12.3
 jinja2>=3.1.4
 python-multipart>=0.0.9
+holehe>=0.8.0
+telethon>=1.36.0

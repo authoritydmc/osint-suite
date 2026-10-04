@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
+from typing import Dict
 import os
 
 # When "1" (default), every request except /health and /docs must carry
@@ -18,12 +19,17 @@ PUBLIC_PREFIXES = ("/static/",)
 
 from app.core.phone_recon import analyze_phone_number
 from app.core.sherlock_recon import search_username
-from app.core.domain_recon import query_dns_records, ip_intel
+from app.core.domain_recon import query_dns_records, enrich_domain, ip_intel
+from app.core.email_recon import analyze_email
+from app.core.identity_recon import telegram_lookup_e164, telegram_status
+from app.core import keystore
+
+keystore.apply_runtime_keys()  # persisted /api/settings keys -> environ
 
 app = FastAPI(
     title="RajLabs OSINT & NUMINT Suite",
     description="Enterprise Multi-Vector Threat Intelligence, Phone Recon & Social Reconnaissance Engine",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 templates = Jinja2Templates(directory="app/templates")
@@ -59,13 +65,16 @@ class DomainRequest(BaseModel):
 class IPRequest(BaseModel):
     ip: str
 
+class EmailRequest(BaseModel):
+    email: str
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="dashboard.html")
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "osint-suite", "version": "1.0.0"}
+    return {"status": "healthy", "service": "osint-suite", "version": "2.0.0"}
 
 @app.get("/api/client-geo")
 async def get_client_geo(request: Request):
@@ -97,7 +106,14 @@ async def get_client_geo(request: Request):
 
 @app.post("/api/recon/phone")
 async def api_phone(req: PhoneRequest):
-    return analyze_phone_number(req.phone, req.country_code)
+    res = await analyze_phone_number(req.phone, req.country_code)
+    try:
+        e164 = (res.get("number_details") or {}).get("e164", "")
+        if e164:
+            res["telegram"] = await telegram_lookup_e164(e164)
+    except Exception:
+        pass
+    return res
 
 @app.post("/api/recon/username")
 async def api_username(req: UsernameRequest):
@@ -105,7 +121,30 @@ async def api_username(req: UsernameRequest):
 
 @app.post("/api/recon/domain")
 async def api_domain(req: DomainRequest):
-    return query_dns_records(req.domain)
+    base = query_dns_records(req.domain)
+    try:
+        base["passive_intel"] = await enrich_domain(base["domain"])
+    except Exception as e:
+        base["passive_intel"] = {"error": str(e)}
+    return base
+
+@app.post("/api/recon/email")
+async def api_email(req: EmailRequest):
+    return await analyze_email(req.email)
+
+
+class SettingsSave(BaseModel):
+    keys: Dict[str, str]
+
+
+@app.get("/api/settings")
+async def api_settings_get():
+    return {**keystore.status(), "telegram": telegram_status()}
+
+
+@app.post("/api/settings")
+async def api_settings_save(req: SettingsSave):
+    return {"applied": keystore.save(req.keys), **keystore.status()}
 
 @app.post("/api/recon/ip")
 async def api_ip(req: IPRequest):

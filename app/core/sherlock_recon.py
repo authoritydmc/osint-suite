@@ -23,6 +23,23 @@ PLATFORMS = [
     {"name": "Replit", "url": "https://replit.com/@{}", "check_url": "https://replit.com/@{}", "type": "status_200"},
     {"name": "Keybase", "url": "https://keybase.io/{}", "check_url": "https://keybase.io/_/api/1.0/user/lookup.json?usernames={}", "type": "keybase"},
     {"name": "Gravatar", "url": "https://en.gravatar.com/{}", "check_url": "https://en.gravatar.com/{}.json", "type": "status_200"},
+    # --- added: high-value dev/social/video/knowledge platforms ---
+    {"name": "StackOverflow", "url": "https://stackoverflow.com/users/{}", "check_url": "https://api.stackexchange.com/2.3/users?inname={}&site=stackoverflow", "type": "so"},
+    {"name": "YouTube", "url": "https://www.youtube.com/@{}", "check_url": "https://www.youtube.com/@{}", "type": "status_200"},
+    {"name": "TikTok", "url": "https://www.tiktok.com/@{}", "check_url": "https://www.tiktok.com/@{}", "type": "status_200"},
+    {"name": "Facebook", "url": "https://www.facebook.com/{}", "check_url": "https://www.facebook.com/{}", "type": "status_200"},
+    {"name": "Quora", "url": "https://www.quora.com/profile/{}", "check_url": "https://www.quora.com/profile/{}", "type": "status_200"},
+    {"name": "Flickr", "url": "https://www.flickr.com/people/{}", "check_url": "https://www.flickr.com/people/{}", "type": "status_200"},
+    {"name": "Vimeo", "url": "https://vimeo.com/{}", "check_url": "https://vimeo.com/{}", "type": "status_200"},
+    {"name": "Dribbble", "url": "https://dribbble.com/{}", "check_url": "https://dribbble.com/{}", "type": "status_200"},
+    {"name": "Behance", "url": "https://www.behance.net/{}", "check_url": "https://www.behance.net/{}", "type": "status_200"},
+    {"name": "Codepen", "url": "https://codepen.io/{}", "check_url": "https://codepen.io/{}", "type": "status_200"},
+    {"name": "HackerRank", "url": "https://www.hackerrank.com/profile/{}", "check_url": "https://www.hackerrank.com/profile/{}", "type": "status_200"},
+    {"name": "Kaggle", "url": "https://www.kaggle.com/{}", "check_url": "https://www.kaggle.com/{}", "type": "status_200"},
+    {"name": "Pastebin", "url": "https://pastebin.com/u/{}", "check_url": "https://pastebin.com/u/{}", "type": "status_200"},
+    {"name": "Gumroad", "url": "https://{}.gumroad.com", "check_url": "https://{}.gumroad.com", "type": "status_200"},
+    {"name": "Snapchat", "url": "https://www.snapchat.com/add/{}", "check_url": "https://www.snapchat.com/add/{}", "type": "status_200"},
+    {"name": "Linktree", "url": "https://linktr.ee/{}", "check_url": "https://linktr.ee/{}", "type": "status_200"},
 ]
 
 async def check_single_platform(client: httpx.AsyncClient, username: str, platform: Dict[str, str]) -> Dict[str, Any]:
@@ -50,12 +67,31 @@ async def check_single_platform(client: httpx.AsyncClient, username: str, platfo
             found = (r.status_code == 200 and f"user: {username}" in r.text)
         elif ptype == "keybase":
             found = (r.status_code == 200 and '"them":[{' in r.text)
-            
+        elif ptype == "so":
+            try:
+                found = (r.status_code == 200 and len(r.json().get("items", [])) > 0)
+            except Exception:
+                found = False
+
+        extra: Dict[str, Any] = {}
+        # Enrich GitHub hits with real profile data (free public API)
+        if found and name == "GitHub":
+            try:
+                g = r.json()
+                extra = {"login": g.get("login"), "name": g.get("name"),
+                         "bio": (g.get("bio") or "")[:200], "followers": g.get("followers"),
+                         "public_repos": g.get("public_repos"), "avatar": g.get("avatar_url"),
+                         "blog": g.get("blog"), "location": g.get("location"),
+                         "created": g.get("created_at")}
+            except Exception:
+                pass
+
         return {
             "platform": name,
             "url": url,
             "exists": found,
-            "status_code": r.status_code
+            "status_code": r.status_code,
+            **({"profile": extra} if extra else {})
         }
     except Exception:
         return {
