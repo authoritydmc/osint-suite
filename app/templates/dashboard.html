@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RajLabs OSINT & NUMINT Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        dark: { 800: '#0f172a', 900: '#020617', 700: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .tab-active { border-bottom: 2px solid #6366f1; color: #818cf8; }
+    </style>
+</head>
+<body class="bg-dark-900 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+    <div id="app" class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-8 border-b border-slate-800 gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-satellite-dish text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        RajLabs OSINT & NUMINT
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Enterprise</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Multi-Vector Threat Intelligence, Phone Reconnaissance & Identity Hunter</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="https://auth.rajlabs.in" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition flex items-center gap-1.5 border border-slate-700">
+                    <i class="fa-solid fa-shield-halved text-indigo-400"></i> Authentik SSO
+                </a>
+                <a href="https://status.rajlabs.in" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs transition flex items-center gap-1.5">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> Systems 100% UP
+                </a>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-800 mb-6 space-x-6 text-sm">
+            <button @click="activeTab = 'phone'" :class="{'tab-active font-semibold': activeTab === 'phone'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-phone text-xs"></i> Phone NUMINT
+            </button>
+            <button @click="activeTab = 'sherlock'" :class="{'tab-active font-semibold': activeTab === 'sherlock'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-user-secret text-xs"></i> Sherlock Identity Hunter
+            </button>
+            <button @click="activeTab = 'domain'" :class="{'tab-active font-semibold': activeTab === 'domain'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-globe text-xs"></i> DNS & Domain Recon
+            </button>
+            <button @click="activeTab = 'ip'" :class="{'tab-active font-semibold': activeTab === 'ip'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-network-wired text-xs"></i> IP & ASN Geolocation
+            </button>
+        </div>
+
+        <!-- 1. PHONE NUMINT MODULE -->
+        <div v-if="activeTab === 'phone'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl">
+                <form @submit.prevent="searchPhone" class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-phone absolute left-4 top-3.5 text-slate-500"></i>
+                        <input v-model="phoneInput" type="text" placeholder="Enter Phone Number (e.g., +919876543210 or 9876543210)" class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    </div>
+                    <select v-model="phoneRegion" class="bg-dark-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition">
+                        <option value="IN">🇮🇳 India (+91)</option>
+                        <option value="US">🇺🇸 USA / Canada (+1)</option>
+                        <option value="GB">🇬🇧 United Kingdom (+44)</option>
+                        <option value="AE">🇦🇪 UAE (+971)</option>
+                        <option value="SG">🇸🇬 Singapore (+65)</option>
+                    </select>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <i v-else class="fa-solid fa-magnifying-glass"></i>
+                        <span>Scan Number</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Phone Results -->
+            <div v-if="phoneResult" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Overview Card -->
+                <div class="glass p-6 rounded-2xl space-y-4">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Number Formatting</h3>
+                    <div class="space-y-2">
+                        <div class="text-2xl font-bold text-indigo-400 font-mono">{{ phoneResult.number_details?.international }}</div>
+                        <div class="text-xs text-slate-400 font-mono">E.164: {{ phoneResult.number_details?.e164 }}</div>
+                        <div class="text-xs text-slate-400 font-mono">National: {{ phoneResult.number_details?.national }}</div>
+                    </div>
+                    <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Validity:</span>
+                        <span :class="phoneResult.valid ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'" class="text-xs px-2.5 py-1 rounded-full border">
+                            {{ phoneResult.valid ? 'Valid Number' : 'Invalid Number' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Telecom & Geo Card -->
+                <div class="glass p-6 rounded-2xl space-y-4">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Telecom & Geo Intelligence</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-400">Original Carrier:</span> <span class="font-medium text-white">{{ phoneResult.telecom_intel?.carrier }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Line Type:</span> <span class="font-medium text-white">{{ phoneResult.telecom_intel?.line_type }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Telecom Circle:</span> <span class="font-medium text-indigo-300">{{ phoneResult.telecom_intel?.telecom_circle }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Timezones:</span> <span class="font-mono text-xs text-slate-300">{{ phoneResult.telecom_intel?.timezones?.join(', ') }}</span></div>
+                    </div>
+                </div>
+
+                <!-- Threat & External Dorks -->
+                <div class="glass p-6 rounded-2xl space-y-4">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Risk Profile & Dorks</h3>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400">Fraud Risk Rating:</span>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">{{ phoneResult.reputation_risk?.risk_level }}</span>
+                    </div>
+                    <div class="space-y-2 pt-2">
+                        <div class="text-xs text-slate-400 mb-1">Direct External Recon:</div>
+                        <div class="flex flex-wrap gap-2">
+                            <a v-for="ext in phoneResult.external_lookups" :key="ext.name" :href="ext.url" target="_blank" class="px-2.5 py-1 rounded-lg bg-dark-800 hover:bg-slate-700 text-xs text-indigo-400 border border-slate-700 transition flex items-center gap-1">
+                                {{ ext.name }} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SHERLOCK IDENTITY HUNTER -->
+        <div v-if="activeTab === 'sherlock'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl">
+                <form @submit.prevent="searchSherlock" class="flex gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-at absolute left-4 top-3.5 text-slate-500"></i>
+                        <input v-model="sherlockInput" type="text" placeholder="Enter target username (e.g. jinjax, rajlabs, satoshi)" class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    </div>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <i v-else class="fa-solid fa-crosshairs"></i>
+                        <span>Scan 20+ Platforms</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Sherlock Results Grid -->
+            <div v-if="sherlockResult" class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-300">
+                        Found <span class="text-emerald-400 font-bold">{{ sherlockResult.total_found }}</span> active profiles across {{ sherlockResult.total_scanned }} platforms for <span class="text-indigo-400 font-mono">@{{ sherlockResult.username }}</span>
+                    </h3>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div v-for="prof in sherlockResult.profiles" :key="prof.platform" :class="prof.exists ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-dark-800/40 opacity-40'" class="glass p-4 rounded-xl border transition flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-semibold text-white">{{ prof.platform }}</div>
+                            <div class="text-xs text-slate-400 truncate max-w-[180px]">{{ prof.url }}</div>
+                        </div>
+                        <a v-if="prof.exists" :href="prof.url" target="_blank" class="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                        <span v-else class="text-xs text-slate-600"><i class="fa-solid fa-xmark"></i></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. DOMAIN & DNS RECON -->
+        <div v-if="activeTab === 'domain'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl">
+                <form @submit.prevent="searchDomain" class="flex gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-globe absolute left-4 top-3.5 text-slate-500"></i>
+                        <input v-model="domainInput" type="text" placeholder="Enter target domain (e.g. rajlabs.in, google.com)" class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    </div>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <i v-else class="fa-solid fa-network-wired"></i>
+                        <span>Audit DNS & Subs</span>
+                    </button>
+                </form>
+            </div>
+
+            <div v-if="domainResult" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass p-6 rounded-2xl space-y-4">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">DNS Records (A, MX, TXT, NS)</h3>
+                        <div class="space-y-3 font-mono text-xs">
+                            <div v-for="(vals, rtype) in domainResult.dns_records" :key="rtype" class="space-y-1">
+                                <span class="font-bold text-indigo-400">{{ rtype }} Records:</span>
+                                <div v-if="vals.length" class="pl-3 text-slate-300 space-y-0.5">
+                                    <div v-for="v in vals" :key="v" class="truncate">{{ v }}</div>
+                                </div>
+                                <div v-else class="pl-3 text-slate-600 italic">None found</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass p-6 rounded-2xl space-y-4">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Discovered Live Subdomains</h3>
+                        <div class="space-y-2">
+                            <div v-for="sub in domainResult.discovered_subdomains" :key="sub.subdomain" class="p-2.5 rounded-lg bg-dark-800 border border-slate-800 flex justify-between items-center text-xs">
+                                <span class="font-mono text-indigo-300 font-semibold">{{ sub.subdomain }}</span>
+                                <span class="font-mono text-slate-400">{{ sub.ips.join(', ') }}</span>
+                            </div>
+                            <div v-if="!domainResult.discovered_subdomains?.length" class="text-xs text-slate-500 italic">No standard top-level subdomains discovered via instant bruteforce.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. IP & ASN INTEL -->
+        <div v-if="activeTab === 'ip'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl">
+                <form @submit.prevent="searchIP" class="flex gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-server absolute left-4 top-3.5 text-slate-500"></i>
+                        <input v-model="ipInput" type="text" placeholder="Enter IP Address or Hostname (e.g. 80.225.195.202, 1.1.1.1)" class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    </div>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <i v-else class="fa-solid fa-location-crosshairs"></i>
+                        <span>GeoLocate IP</span>
+                    </button>
+                </form>
+            </div>
+
+            <div v-if="ipResult" class="glass p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Autonomous System & Geolocation</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between"><span class="text-slate-400">Target IP:</span> <span class="font-mono text-indigo-400 font-bold">{{ ipResult.ip }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Country:</span> <span class="font-medium text-white">{{ ipResult.country }} ({{ ipResult.country_code }})</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">City / Region:</span> <span class="font-medium text-white">{{ ipResult.city }}, {{ ipResult.region }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">ASN & Org:</span> <span class="font-medium text-indigo-300">{{ ipResult.asn }} - {{ ipResult.org }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Timezone:</span> <span class="font-mono text-slate-400">{{ ipResult.timezone }}</span></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    activeTab: 'phone',
+                    loading: false,
+                    phoneInput: '+919876543210',
+                    phoneRegion: 'IN',
+                    phoneResult: null,
+                    sherlockInput: 'raj',
+                    sherlockResult: null,
+                    domainInput: 'rajlabs.in',
+                    domainResult: null,
+                    ipInput: '80.225.195.202',
+                    ipResult: null,
+                }
+            },
+            methods: {
+                async searchPhone() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/phone', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ phone: this.phoneInput, country_code: this.phoneRegion })
+                        });
+                        this.phoneResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async searchSherlock() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/username', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: this.sherlockInput })
+                        });
+                        this.sherlockResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async searchDomain() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/domain', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ domain: this.domainInput })
+                        });
+                        this.domainResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async searchIP() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/ip', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ip: this.ipInput })
+                        });
+                        this.ipResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
