@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
@@ -23,6 +24,7 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 def get_sso_user(request: Request) -> str | None:
     """Return Authentik SSO identity from trusted ForwardAuth headers."""
