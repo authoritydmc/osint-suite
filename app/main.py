@@ -11,7 +11,10 @@ import os
 # Traefik enforces login at the edge; this is defense-in-depth so direct
 # container access (bypassing the proxy) cannot be abused.
 REQUIRE_SSO = os.getenv("REQUIRE_AUTHENTIK_SSO", "1") == "1"
+# /health + /static/* stay public: Authentik fetches app icons without SSO
+# headers, and browsers load favicons/assets unauthenticated.
 PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+PUBLIC_PREFIXES = ("/static/",)
 
 from app.core.phone_recon import analyze_phone_number
 from app.core.sherlock_recon import search_username
@@ -32,7 +35,7 @@ def get_sso_user(request: Request) -> str | None:
 
 class AuthentikSSOMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if REQUIRE_SSO and request.url.path not in PUBLIC_PATHS:
+        if REQUIRE_SSO and request.url.path not in PUBLIC_PATHS and not request.url.path.startswith(PUBLIC_PREFIXES):
             if not get_sso_user(request):
                 return JSONResponse(
                     status_code=401,
