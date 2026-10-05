@@ -111,6 +111,7 @@ async def search_username(username: str) -> Dict[str, Any]:
     found_profiles = [r for r in results if r["exists"]]
     
     return {
+        "status": "success",
         "username": clean_username,
         "total_scanned": len(PLATFORMS),
         "total_found": len(found_profiles),

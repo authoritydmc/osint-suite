@@ -22,7 +22,9 @@ from app.core.sherlock_recon import search_username
 from app.core.domain_recon import query_dns_records, enrich_domain, ip_intel
 from app.core.email_recon import analyze_email
 from app.core.identity_recon import telegram_lookup_e164, telegram_status
+from app.core.reddit_recon import analyze_reddit_user, search_reddit
 from app.core import keystore
+from app.core import arsenal
 
 keystore.apply_runtime_keys()  # persisted /api/settings keys -> environ
 
@@ -67,6 +69,13 @@ class IPRequest(BaseModel):
 
 class EmailRequest(BaseModel):
     email: str
+
+class RedditUserRequest(BaseModel):
+    username: str
+
+class RedditSearchRequest(BaseModel):
+    query: str
+    limit: int = 15
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard(request: Request):
@@ -132,6 +141,14 @@ async def api_domain(req: DomainRequest):
 async def api_email(req: EmailRequest):
     return await analyze_email(req.email)
 
+@app.post("/api/recon/reddit/user")
+async def api_reddit_user(req: RedditUserRequest):
+    return await analyze_reddit_user(req.username)
+
+@app.post("/api/recon/reddit/search")
+async def api_reddit_search(req: RedditSearchRequest):
+    return await search_reddit(req.query, req.limit)
+
 
 class SettingsSave(BaseModel):
     keys: Dict[str, str]
@@ -149,3 +166,58 @@ async def api_settings_save(req: SettingsSave):
 @app.post("/api/recon/ip")
 async def api_ip(req: IPRequest):
     return await ip_intel(req.ip)
+
+
+class SFScanRequest(BaseModel):
+    target: str
+    name: str = ""
+
+
+class HVRunRequest(BaseModel):
+    target: str
+    sources: list = []
+    limit: int = 200
+
+
+class PIDeepRequest(BaseModel):
+    phone: str
+
+
+@app.get("/api/arsenal/status")
+async def api_arsenal_status():
+    return await arsenal.arsenal_overview()
+
+
+@app.post("/api/arsenal/spiderfoot/scan")
+async def api_sf_scan(req: SFScanRequest):
+    return await arsenal.sf_start_scan(req.target.strip(), req.name.strip() or None)
+
+
+@app.get("/api/arsenal/spiderfoot/scans")
+async def api_sf_scans():
+    return await arsenal.sf_scans()
+
+
+@app.get("/api/arsenal/spiderfoot/scan/{scan_id}")
+async def api_sf_scan_one(scan_id: str):
+    return await arsenal.sf_scan_result(scan_id)
+
+
+@app.get("/api/arsenal/harvester/sources")
+async def api_hv_sources():
+    return await arsenal.hv_sources()
+
+
+@app.post("/api/arsenal/harvester/run")
+async def api_hv_run(req: HVRunRequest):
+    return await arsenal.hv_start_run(req.target.strip(), req.sources, req.limit)
+
+
+@app.get("/api/arsenal/harvester/run/{run_id}")
+async def api_hv_run_one(run_id: str):
+    return await arsenal.hv_run(run_id)
+
+
+@app.post("/api/arsenal/phone/deep")
+async def api_pi_deep(req: PIDeepRequest):
+    return await arsenal.pi_deep_scan(req.phone.strip())

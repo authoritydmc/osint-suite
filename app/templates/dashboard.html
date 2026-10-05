@@ -73,6 +73,12 @@
             <button @click="activeTab = 'email'; loadSettings()" :class="{'tab-active font-semibold': activeTab === 'email'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
                 <i class="fa-solid fa-envelope text-xs"></i> Email Intel
             </button>
+            <button @click="activeTab = 'reddit'" :class="{'tab-active font-semibold': activeTab === 'reddit'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-brands fa-reddit text-xs text-orange-400"></i> Reddit Intel
+            </button>
+            <button @click="activeTab = 'arsenal'; loadArsenal()" :class="{'tab-active font-semibold': activeTab === 'arsenal'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-cubes text-xs text-purple-400"></i> Deep Arsenal
+            </button>
             <button @click="activeTab = 'settings'; loadSettings()" :class="{'tab-active font-semibold': activeTab === 'settings'}" class="pb-3 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
                 <i class="fa-solid fa-key text-xs"></i> API Keys
             </button>
@@ -309,7 +315,231 @@
             </div>
         </div>
 
-        <!-- 6. API KEYS / SETTINGS MODULE -->
+        <!-- 6. REDDIT INTELLIGENCE MODULE -->
+        <div v-if="activeTab === 'reddit'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl space-y-4">
+                <div class="flex items-center space-x-4 border-b border-slate-800 pb-3 text-sm">
+                    <button @click="redditMode = 'user'" :class="{'text-orange-400 font-semibold border-b-2 border-orange-500': redditMode === 'user'}" class="pb-2 text-slate-400 transition">User Profile Recon</button>
+                    <button @click="redditMode = 'search'" :class="{'text-orange-400 font-semibold border-b-2 border-orange-500': redditMode === 'search'}" class="pb-2 text-slate-400 transition">Reddit Dork & Keyword Search</button>
+                </div>
+
+                <!-- User Search Form -->
+                <form v-if="redditMode === 'user'" @submit.prevent="searchRedditUser" class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-brands fa-reddit absolute left-4 top-3.5 text-orange-400"></i>
+                        <input v-model="redditUserInput" type="text" placeholder="Reddit username (e.g. spez, thisisbillgates)" class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition" required>
+                    </div>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-medium text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <span>Scan Reddit User</span>
+                    </button>
+                </form>
+
+                <!-- Query Search Form -->
+                <form v-if="redditMode === 'search'" @submit.prevent="searchRedditQuery" class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-orange-400"></i>
+                        <input v-model="redditSearchInput" type="text" placeholder="Search keywords, phone, email, or domain across Reddit..." class="w-full bg-dark-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition" required>
+                    </div>
+                    <button type="submit" :disabled="loading" class="px-6 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-medium text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 disabled:opacity-50">
+                        <i v-if="loading" class="fa-solid fa-spinner animate-spin"></i>
+                        <span>Search Reddit</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Reddit User Results -->
+            <div v-if="redditUserResult && redditMode === 'user'" class="space-y-6">
+                <div v-if="redditUserResult.note" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ${ redditUserResult.note }
+                </div>
+
+                <div v-if="redditUserResult.profile" class="glass p-6 rounded-2xl">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center space-x-4">
+                            <img v-if="redditUserResult.profile.icon_img" :src="redditUserResult.profile.icon_img" class="h-14 w-14 rounded-full border border-orange-500/30 object-cover" />
+                            <div v-else class="h-14 w-14 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl font-bold">
+                                <i class="fa-brands fa-reddit"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                    u/${ redditUserResult.username }
+                                    <span v-if="redditUserResult.profile.is_gold" class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Reddit Premium</span>
+                                    <span v-if="redditUserResult.profile.is_mod" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Moderator</span>
+                                </h3>
+                                <p v-if="redditUserResult.profile.created_at" class="text-xs text-slate-400">Created: ${ redditUserResult.profile.created_at } (${ redditUserResult.profile.account_age_days } days old)</p>
+                            </div>
+                        </div>
+                        <a :href="redditUserResult.profile.url" target="_blank" class="px-4 py-2 rounded-xl bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 border border-orange-500/30 text-xs flex items-center gap-2 transition">
+                            <i class="fa-brands fa-reddit"></i> Open Profile
+                        </a>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                        <div class="bg-dark-800 p-4 rounded-xl border border-slate-800">
+                            <div class="text-xs text-slate-400">Total Karma</div>
+                            <div class="text-lg font-bold text-white">${ (redditUserResult.profile.total_karma || 0).toLocaleString() }</div>
+                        </div>
+                        <div class="bg-dark-800 p-4 rounded-xl border border-slate-800">
+                            <div class="text-xs text-slate-400">Post Karma</div>
+                            <div class="text-lg font-bold text-orange-400">${ (redditUserResult.profile.link_karma || 0).toLocaleString() }</div>
+                        </div>
+                        <div class="bg-dark-800 p-4 rounded-xl border border-slate-800">
+                            <div class="text-xs text-slate-400">Comment Karma</div>
+                            <div class="text-lg font-bold text-indigo-400">${ (redditUserResult.profile.comment_karma || 0).toLocaleString() }</div>
+                        </div>
+                        <div class="bg-dark-800 p-4 rounded-xl border border-slate-800">
+                            <div class="text-xs text-slate-400">Verified Email</div>
+                            <div class="text-lg font-bold" :class="redditUserResult.profile.has_verified_email ? 'text-emerald-400' : 'text-slate-400'">${ redditUserResult.profile.has_verified_email ? 'Yes' : 'Unverified' }</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Subreddits -->
+                <div v-if="redditUserResult.top_subreddits && redditUserResult.top_subreddits.length" class="glass p-6 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Top Active Subreddits</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="sub in redditUserResult.top_subreddits" :key="sub.subreddit" class="px-3 py-1.5 rounded-lg bg-dark-800 border border-slate-700 text-xs text-slate-200">
+                            r/${ sub.subreddit } <span class="text-orange-400 font-semibold">(${ sub.activity_count })</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Deep Dorks & Mirrors -->
+                <div v-if="redditUserResult.dorks && redditUserResult.dorks.length" class="glass p-6 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Reddit OSINT Dorks & Mirrors</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <a v-for="d in redditUserResult.dorks" :key="d.name" :href="d.url" target="_blank" class="p-3 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 flex items-center justify-between transition group">
+                            <span class="text-xs font-medium text-slate-200 group-hover:text-white">${ d.name }</span>
+                            <span class="text-xs px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">${ d.badge }</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reddit Search Results -->
+            <div v-if="redditSearchResult && redditMode === 'search'" class="space-y-6">
+                <div class="glass p-6 rounded-2xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Search Results: "${ redditSearchResult.query }"</h3>
+                        <span class="text-xs text-slate-400">${ redditSearchResult.count } findings</span>
+                    </div>
+
+                    <div v-if="redditSearchResult.results && redditSearchResult.results.length" class="space-y-3">
+                        <div v-for="res in redditSearchResult.results" :key="res.url" class="p-4 rounded-xl bg-dark-800 border border-slate-800 space-y-2">
+                            <div class="flex items-start justify-between">
+                                <a :href="res.url" target="_blank" class="text-sm font-semibold text-orange-400 hover:text-orange-300 transition">${ res.title }</a>
+                                <span class="text-xs text-slate-500">r/${ res.subreddit } · by u/${ res.author }</span>
+                            </div>
+                            <p v-if="res.selftext" class="text-xs text-slate-400">${ res.selftext }</p>
+                            <div class="flex items-center gap-4 text-xs text-slate-500">
+                                <span><i class="fa-solid fa-arrow-up text-orange-400"></i> ${ res.score }</span>
+                                <span><i class="fa-solid fa-comment text-indigo-400"></i> ${ res.num_comments } comments</span>
+                                <span>${ res.created_at }</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="text-xs text-slate-500">No direct API results found. Try the Google & Reddit dorks below.</div>
+
+                    <!-- Dorks -->
+                    <div v-if="redditSearchResult.dorks" class="pt-4 border-t border-slate-800 space-y-2">
+                        <div class="text-xs text-slate-400 font-medium">Quick Dorks:</div>
+                        <div class="flex flex-wrap gap-2">
+                            <a v-for="d in redditSearchResult.dorks" :key="d.name" :href="d.url" target="_blank" class="px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-xs text-orange-400 hover:bg-orange-500/20 transition">
+                                <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> ${ d.name }
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. DEEP ARSENAL MODULE -->
+        <div v-if="activeTab === 'arsenal'" class="space-y-6">
+            <div class="glass p-6 rounded-2xl space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-cubes text-purple-400"></i> Deep Arsenal — heavy tools, orchestrated server-side</h3>
+                        <p class="text-xs text-slate-400 mt-1">SpiderFoot auto-recon, theHarvester HarvestView runs, PhoneInfoga deep phone scans. Scans run inside the containers; results stream back here.</p>
+                    </div>
+                    <button @click="loadArsenal" :disabled="loading" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition disabled:opacity-50">Refresh status</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div v-for="tool in arsenalCards()" :key="tool.key" class="p-4 rounded-xl bg-dark-800 border border-slate-800 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-semibold text-white">${ tool.name }</span>
+                            <span :class="tool.badge" class="text-[11px] px-2 py-0.5 rounded-full border font-mono">${ tool.state }</span>
+                        </div>
+                        <div class="text-xs text-slate-400">${ tool.desc }</div>
+                        <a :href="tool.url" target="_blank" class="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300">Open full UI <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SpiderFoot -->
+            <div class="glass p-6 rounded-2xl space-y-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">SpiderFoot — automated target recon (200+ sources)</h3>
+                <form @submit.prevent="sfStart" class="flex flex-col md:flex-row gap-3">
+                    <input v-model="sfTarget" type="text" placeholder="domain, IP, email or username" class="flex-1 bg-dark-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    <button type="submit" :disabled="loading" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition disabled:opacity-50">Start deep scan</button>
+                    <button type="button" @click="sfRefresh" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition">Refresh scans</button>
+                </form>
+                <div v-if="sfScans && sfScans.length" class="space-y-2">
+                    <div v-for="s in sfScans" :key="s.id" class="p-3 rounded-xl bg-dark-800 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
+                        <span class="font-mono text-indigo-300">${ s.target } <span class="text-slate-500">(${ s.name })</span></span>
+                        <span class="flex items-center gap-2">
+                            <span :class="s.status === 'RUNNING' ? 'text-amber-400' : 'text-emerald-400'" class="font-mono">${ s.status }</span>
+                            <button @click="sfView(s.id)" class="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200">View results</button>
+                        </span>
+                    </div>
+                </div>
+                <div v-if="sfResult && sfResult.ok" class="p-4 rounded-xl bg-dark-800 border border-slate-800 text-xs space-y-2">
+                    <div class="text-slate-300">Status: <span class="font-mono text-white">${ sfResult.status }</span> · Events: <span class="font-mono text-white">${ sfResult.total_events }</span></div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span v-for="(n, k) in sfResult.counts" :key="k" class="px-2 py-0.5 rounded bg-slate-700/60 font-mono text-slate-300">${ k }: ${ n }</span>
+                    </div>
+                    <div v-for="e in (sfResult.sample || [])" :key="e.data" class="font-mono text-slate-400 truncate">[${ e.type }] ${ e.data }</div>
+                </div>
+                <div v-if="sfResult && !sfResult.ok" class="text-xs text-rose-400">SpiderFoot error: ${ sfResult.error }</div>
+            </div>
+
+            <!-- Harvester -->
+            <div class="glass p-6 rounded-2xl space-y-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">theHarvester — email / subdomain / host harvest</h3>
+                <form @submit.prevent="hvStart" class="flex flex-col md:flex-row gap-3">
+                    <input v-model="hvTarget" type="text" placeholder="target domain (e.g. rajlabs.in)" class="flex-1 bg-dark-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition" required>
+                    <button type="submit" :disabled="loading" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition disabled:opacity-50">Harvest</button>
+                    <button type="button" @click="hvRefresh" :disabled="!hvRunId" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition disabled:opacity-50">Check run</button>
+                </form>
+                <div v-if="hvSources && hvSources.length" class="flex flex-wrap gap-1.5">
+                    <label v-for="s in hvSources" :key="s" class="px-2 py-1 rounded-lg bg-dark-800 border border-slate-700 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" :value="s" v-model="hvSelected" class="rounded bg-slate-800 border-slate-600"> ${ s }
+                    </label>
+                </div>
+                <div v-if="hvRun" class="p-4 rounded-xl bg-dark-800 border border-slate-800 text-xs">
+                    <pre class="whitespace-pre-wrap text-slate-300 font-mono max-h-64 overflow-y-auto">${ shortJson(hvRun) }</pre>
+                </div>
+            </div>
+
+            <!-- PhoneInfoga deep -->
+            <div class="glass p-6 rounded-2xl space-y-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">PhoneInfoga — deep phone scan (all scanners)</h3>
+                <form @submit.prevent="piDeep" class="flex flex-col md:flex-row gap-3">
+                    <input v-model="piPhone" type="text" placeholder="+E.164 number" class="flex-1 bg-dark-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-indigo-500 transition" required>
+                    <button type="submit" :disabled="loading" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition disabled:opacity-50">Deep scan</button>
+                </form>
+                <div v-if="piResult" class="space-y-2 text-xs">
+                    <div v-if="piResult.validation" class="p-3 rounded-xl bg-dark-800 border border-slate-800 font-mono text-slate-300">Valid: ${ piResult.validation.valid } · ${ piResult.validation.international } · ${ piResult.validation.carrier }</div>
+                    <div v-for="(r, name) in (piResult.results || {})" :key="name" class="p-3 rounded-xl bg-dark-800 border border-slate-800">
+                        <div class="font-semibold text-indigo-300 mb-1">${ name }</div>
+                        <pre class="whitespace-pre-wrap text-slate-400 font-mono max-h-40 overflow-y-auto">${ shortJson(r) }</pre>
+                    </div>
+                    <div v-if="piResult.error" class="text-rose-400">PhoneInfoga error: ${ piResult.error }</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. API KEYS / SETTINGS MODULE -->
         <div v-if="activeTab === 'settings'" class="space-y-6">
             <div class="glass p-6 rounded-2xl space-y-4">
                 <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">API Keys & Integrations</h3>
@@ -352,8 +582,24 @@
                     ipResult: null,
                     emailInput: '',
                     emailResult: null,
+                    redditMode: 'user',
+                    redditUserInput: '',
+                    redditSearchInput: '',
+                    redditUserResult: null,
+                    redditSearchResult: null,
                     settings: null,
                     keyInputs: {},
+                    arsenalStatus: null,
+                    sfTarget: '',
+                    sfScans: [],
+                    sfResult: null,
+                    hvTarget: '',
+                    hvSources: [],
+                    hvSelected: [],
+                    hvRun: null,
+                    hvRunId: '',
+                    piPhone: '',
+                    piResult: null,
                 }
             },
             mounted() {
@@ -440,6 +686,115 @@
                     } finally {
                         this.loading = false;
                     }
+                },
+                async searchRedditUser() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/reddit/user', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: this.redditUserInput })
+                        });
+                        this.redditUserResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async searchRedditQuery() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/recon/reddit/search', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query: this.redditSearchInput, limit: 15 })
+                        });
+                        this.redditSearchResult = await r.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                shortJson(o) {
+                    try {
+                        const s = JSON.stringify(o, null, 1) || '';
+                        return s.length > 3000 ? s.slice(0, 3000) + '\n... (truncated)' : s;
+                    } catch (e) { return String(o); }
+                },
+                arsenalCards() {
+                    const st = this.arsenalStatus || {};
+                    const mk = (key, name, desc, url) => {
+                        const s = st[key] || {};
+                        const up = !!(s.ok && s.reachable !== false);
+                        return { key, name, desc, url,
+                            state: s.ok ? (s.reachable === false ? 'DOWN' : 'UP') : (s.error || 'DOWN'),
+                            badge: up ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+                    };
+                    return [
+                        mk('spiderfoot', 'SpiderFoot', '200+ source auto-recon + correlation graph', 'https://spider.rajlabs.in'),
+                        mk('harvester', 'HarvestView', 'theHarvester runs desk, schedules + exports', 'https://harvest.rajlabs.in'),
+                        mk('phoneinfoga', 'PhoneInfoga', 'deep phone scans (v2 API' + (st.phoneinfoga && st.phoneinfoga.version ? ' ' + st.phoneinfoga.version : '') + ')', 'https://phone.rajlabs.in'),
+                    ];
+                },
+                async loadArsenal() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/arsenal/status');
+                        this.arsenalStatus = await r.json();
+                        const h = await fetch('/api/arsenal/harvester/sources');
+                        const hs = await h.json();
+                        if (hs && hs.ok && hs.sources) {
+                            this.hvSources = hs.sources;
+                            const prefer = ['crtsh', 'duckduckgo', 'bing', 'yahoo', 'shodan'];
+                            this.hvSelected = prefer.filter(s => hs.sources.includes(s)).slice(0, 5);
+                            if (!this.hvSelected.length) this.hvSelected = hs.sources.slice(0, 5);
+                        }
+                        await this.sfRefresh();
+                    } finally { this.loading = false; }
+                },
+                async sfStart() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/arsenal/spiderfoot/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: this.sfTarget }) });
+                        const d = await r.json();
+                        if (d.ok) { await this.sfRefresh(); }
+                        else { this.sfResult = d; }
+                    } finally { this.loading = false; }
+                },
+                async sfRefresh() {
+                    try {
+                        const r = await fetch('/api/arsenal/spiderfoot/scans');
+                        const d = await r.json();
+                        if (d.ok) this.sfScans = d.scans;
+                    } catch (e) {}
+                },
+                async sfView(id) {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/arsenal/spiderfoot/scan/' + encodeURIComponent(id));
+                        this.sfResult = await r.json();
+                    } finally { this.loading = false; }
+                },
+                async hvStart() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/arsenal/harvester/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: this.hvTarget, sources: this.hvSelected }) });
+                        const d = await r.json();
+                        if (d.ok && d.run_id) { this.hvRunId = d.run_id; await this.hvRefresh(); }
+                        else { this.hvRun = d; }
+                    } finally { this.loading = false; }
+                },
+                async hvRefresh() {
+                    if (!this.hvRunId) return;
+                    try {
+                        const r = await fetch('/api/arsenal/harvester/run/' + encodeURIComponent(this.hvRunId));
+                        this.hvRun = await r.json();
+                    } catch (e) {}
+                },
+                async piDeep() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch('/api/arsenal/phone/deep', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: this.piPhone }) });
+                        this.piResult = await r.json();
+                    } finally { this.loading = false; }
                 },
                 async loadSettings() {
                     try {

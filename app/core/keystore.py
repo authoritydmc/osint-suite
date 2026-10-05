@@ -36,6 +36,10 @@ REGISTRY: Dict[str, Dict[str, str]] = {
     "TELEGRAM_API_HASH": {"label": "Telegram API hash", "get": "https://my.telegram.org — free", "free": "yes"},
     "TELEGRAM_SESSION": {"label": "Telegram session string (generate once, see README)",
                          "get": "local script — free", "free": "yes"},
+    "REDDIT_CLIENT_ID": {"label": "Reddit App Client ID",
+                         "get": "https://www.reddit.com/prefs/apps — free", "free": "yes"},
+    "REDDIT_CLIENT_SECRET": {"label": "Reddit App Secret",
+                             "get": "https://www.reddit.com/prefs/apps — free", "free": "yes"},
 }
 
 

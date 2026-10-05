@@ -51,3 +51,26 @@ asyncio.run(main())
 # 3. Set TELEGRAM_API_ID / TELEGRAM_API_HASH / TELEGRAM_SESSION on the container.
 # The app imports the number as a contact, reads name/photo, then deletes it.
 ```
+
+## 🧰 Deep Arsenal (SpiderFoot + HarvestView + PhoneInfoga)
+
+The **Deep Arsenal** tab orchestrates three heavy containers server-side
+(deployed via `server-setups/docker-compose.yml` services
+`spiderfoot`, `theharvester`, `phoneinfoga` on `dev-backend-network`).
+No browser CORS or subpath issues: the suite calls their APIs internally
+(`SPIDERFOOT_URL`, `HARVESTVIEW_URL` + `HARVESTVIEW_API_KEY`,
+`PHONEINFOGA_URL` envs) and renders results inline.
+
+- **SpiderFoot 4.0** — start full auto scans, poll status, view event-type
+  counts + samples. Full graph UI at `https://spider.rajlabs.in`.
+- **HarvestView (theHarvester)** — source picker (live from `/api/v1/sources`),
+  async runs with status polling. Full desk at `https://harvest.rajlabs.in`.
+  Requires `THEHARVESTER_API_KEY` in server `.env` (never in repo).
+- **PhoneInfoga v2** — validate + run every scanner for a number inline.
+  Full client at `https://phone.rajlabs.in`.
+  Note: upstream is stable-but-unmaintained; treated as a deep-scan
+  accessory, not a dependency.
+
+The three subdomain UIs sit behind the same Authentik middleware as this app
+and need DNS A records (proxied) for `spider`, `harvest`, `phone`.
+Until DNS exists, everything is fully usable from the Arsenal tab.

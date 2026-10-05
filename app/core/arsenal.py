@@ -41,13 +41,25 @@ async def sf_start_scan(target, name=None):
             r = await c.get(f"{SPIDERFOOT_URL}/startscan", params={
                 "scanname": name or f"osint-hub:{target}",
                 "scantarget": target,
-                "scantype": "all",
-                "usecase": "investigate",
-            })
-            r.raise_for_status()
-            scan_id = (r.text or "").strip().strip('"')
-            if not scan_id:
-                return {"ok": False, "error": "empty scan id from SpiderFoot"}
+                "modulelist": "",
+                "typelist": "",
+                "usecase": "all",
+            }, headers={"Accept": "application/json"})
+            scan_id = ""
+            if r.status_code in (200, 201):
+                try:
+                    data = r.json()
+                    scan_id = data[1] if isinstance(data, list) and len(data) > 1 else str(data)
+                except Exception:
+                    scan_id = (r.text or "").strip().strip('"')
+            elif r.status_code in (301, 302, 303):
+                loc = r.headers.get("location", "")
+                scan_id = loc.split("id=")[-1] if "id=" in loc else ""
+            else:
+                r.raise_for_status()
+            scan_id = (scan_id or "").strip().strip('"')
+            if not scan_id or scan_id.upper().startswith("ERROR"):
+                return {"ok": False, "error": f"SpiderFoot refused scan: {(r.text or '')[:200]}"}
             return {"ok": True, "scan_id": scan_id}
     except Exception as e:
         return _err("spiderfoot", e)
@@ -70,28 +82,43 @@ async def sf_scans():
         return _err("spiderfoot", e)
 
 
+def _sf_event(item):
+    """SpiderFoot scaneventresults row: [seen, data, src, module, conf, vis,
+    risk, hash, ?, ?, type]. Returns normalized dict."""
+    import html as _html
+    if isinstance(item, dict):
+        return {"type": item.get("type", "?"),
+                "data": str(item.get("data", ""))[:300],
+                "module": item.get("module", "")}
+    if isinstance(item, list):
+        get = lambda i: item[i] if len(item) > i else ""
+        return {"type": str(get(10) or "?"),
+                "data": _html.unescape(str(get(1)))[:300],
+                "module": str(get(3))}
+    return {"type": "?", "data": str(item)[:300], "module": ""}
+
+
 async def sf_scan_result(scan_id, sample=25):
     """Status + per-type event counts + small sample (capped, never huge)."""
     try:
         async with httpx.AsyncClient(timeout=SLOW) as c:
             st = await c.get(f"{SPIDERFOOT_URL}/scanstatus", params={"id": scan_id})
             st.raise_for_status()
-            status = (st.text or "").strip()
+            try:
+                sdata = st.json()
+                status = sdata[5] if isinstance(sdata, list) and len(sdata) > 5 else sdata
+            except Exception:
+                status = (st.text or "").strip()
             ev = await c.get(f"{SPIDERFOOT_URL}/scaneventresults",
                              params={"id": scan_id, "eventType": "ALL"})
             ev.raise_for_status()
-            events = ev.json() or []
+            events = [_sf_event(e) for e in (ev.json() or [])]
             counts = {}
             for e in events:
-                t = e.get("type", "?") if isinstance(e, dict) else "?"
-                counts[t] = counts.get(t, 0) + 1
-            keep = []
-            for e in events[:sample]:
-                if isinstance(e, dict):
-                    keep.append({"type": e.get("type"), "data": str(e.get("data", ""))[:300],
-                                 "module": e.get("module")})
+                counts[e["type"]] = counts.get(e["type"], 0) + 1
             return {"ok": True, "scan_id": scan_id, "status": status,
-                    "total_events": len(events), "counts": counts, "sample": keep}
+                    "total_events": len(events), "counts": counts,
+                    "sample": events[:sample]}
     except Exception as e:
         return _err("spiderfoot", e)
 

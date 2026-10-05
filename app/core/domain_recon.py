@@ -76,6 +76,7 @@ def query_dns_records(domain: str) -> Dict[str, Any]:
             pass
 
     return {
+        "status": "success",
         "domain": clean_domain,
         "dns_records": records,
         "is_behind_cloudflare": is_behind_cloudflare,
